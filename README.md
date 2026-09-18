@@ -103,6 +103,9 @@ The pipeline starts from the 51,760-record
 the source file into the ignored data directory and normalize it to JSONL.
 
 ```bash
+export ALPACA_ROOT="${PWD}/data/alpaca_multilingual"
+export LOG_ROOT="${PWD}/logs"
+
 mkdir -p data/source
 curl -L \
   https://raw.githubusercontent.com/gururise/AlpacaDataCleaned/main/alpaca_data_cleaned.json \
@@ -141,6 +144,9 @@ Run the following commands from the repository root after preparing the source
 and starting Gemma.
 
 ```bash
+export ALPACA_ROOT="${PWD}/data/alpaca_multilingual"
+export LOG_ROOT="${PWD}/logs"
+
 bash data-pipeline/scripts/01_annotate_tasks_domains.sh
 
 # Optional analysis only
@@ -155,13 +161,42 @@ bash data-pipeline/scripts/07_validate_translation_coherence.sh
 bash data-pipeline/scripts/08_merge_validated_outputs.sh
 ```
 
+These values make the default persistent data and log locations explicit. Set
+them before stage 0 and keep them unchanged throughout a run. You may replace
+them with paths on another filesystem when more storage is needed. Avoid using
+the temporary smoke-test directory for a complete run.
+
+### Failure handling and quarantine
+
+Model responses that cannot be parsed are preserved for inspection.
+
+- Stage 3 writes policy-annotation failures to
+  `${ALPACA_ROOT}/en/annotation_parse_failures/`. The affected sample remains
+  in the annotated data and is conservatively routed to stage 5.
+- Stage 5 writes failed localizations to
+  `${ALPACA_ROOT}/{lang}/quarantine/alpaca_discarded_samples_localized_gemma4_quarantine.jsonl`.
+  These samples are absent from stage 6 until they are successfully localized.
+- Stage 7 writes failed validation responses to
+  `${ALPACA_ROOT}/{lang}/quarantine/alpaca_post_correction_quarantine.jsonl`.
+  Stage 8 retains the corresponding stage-6 sample without a correction.
+
+Resume mode treats quarantined samples as already processed and does not retry
+them automatically. Review them manually or reprocess them with a compatible
+model while preserving the expected schema and `sample_id`. Quarantine files
+contain diagnostic records and must not be appended directly to a dataset.
+
+For a complete language dataset, the number of stage-4 translated samples plus
+the number of successful stage-5 localizations must equal the number of stage-3
+source samples. Also review the stage-8 matched-validation count to identify
+samples retained without successful stage-7 validation.
+
 After stage 3, the following command produces a textual policy summary without
 invoking a model.
 
 ```bash
 PYTHONPATH=data-pipeline/src \
 python -m alpaca_localization.annotation_statistics \
-  --input data/alpaca_multilingual/en/alpaca_cleaned_labeled_annotated_gemma4.jsonl
+  --input "${ALPACA_ROOT}/en/alpaca_cleaned_labeled_annotated_gemma4.jsonl"
 ```
 
 By default, stages 4–8 process all 50 target languages. The following example
