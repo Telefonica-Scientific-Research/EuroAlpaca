@@ -3,7 +3,9 @@ set -euo pipefail
 
 PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_DIR="$(cd "${PIPELINE_DIR}/.." && pwd)"
+source "${PIPELINE_DIR}/scripts/languages.sh"
 export PYTHONPATH="${PIPELINE_DIR}/src${PYTHONPATH:+:${PYTHONPATH}}"
+ALPACA_ROOT="${ALPACA_ROOT:-${REPO_DIR}/data/alpaca_multilingual}"
 
 LOG_ROOT="${LOG_ROOT:-${REPO_DIR}/logs}"
 LOG_FILE="${LOG_FILE:-${LOG_ROOT}/validate_translation_coherence_with_gemma.log}"
@@ -18,21 +20,37 @@ LOG_EVERY="${LOG_EVERY:-100}"
 ERROR_RAW_CHARS="${ERROR_RAW_CHARS:-5000}"
 QUARANTINE_FILENAME="${QUARANTINE_FILENAME:-alpaca_post_correction_quarantine.jsonl}"
 
-DATASETS=(
-  "/mnt/mirror1/aleixsant/alpaca_cleaned/de/alpaca_cleaned_labeled_annotated.jsonl"
-)
+LANGS=("${EUROALPACA_LANGS[@]}")
+LANGS_CSV="${LANGS_CSV:-}"
+if [[ -n "${LANGS_CSV}" ]]; then
+  IFS=',' read -r -a LANGS <<< "${LANGS_CSV}"
+fi
+if [[ $# -gt 0 ]]; then
+  LANGS=("$@")
+fi
+
+DATASETS=()
+for LANG in "${LANGS[@]}"; do
+  DATASETS+=("${ALPACA_ROOT}/${LANG}/alpaca_cleaned_labeled_annotated_gemma4.jsonl")
+done
+DATASETS_CSV="${DATASETS_CSV:-}"
+if [[ -n "${DATASETS_CSV}" ]]; then
+  IFS=',' read -r -a DATASETS <<< "${DATASETS_CSV}"
+fi
 
 mkdir -p "${LOG_ROOT}"
 : > "${LOG_FILE}"
+FAILED=0
 
 for INPUT_JSONL in "${DATASETS[@]}"; do
   if [[ ! -f "${INPUT_JSONL}" ]]; then
-    echo "[warn] Missing dataset, skipping: ${INPUT_JSONL}" | tee -a "${LOG_FILE}"
+    echo "[error] Missing dataset: ${INPUT_JSONL}" | tee -a "${LOG_FILE}" >&2
+    FAILED=1
     continue
   fi
 
-  OUTPUT_JSONL="$(dirname "${INPUT_JSONL}")/alpaca_cleaned_labeled_annotated_post_validated.jsonl"
-  LANG_TAG="$(sed -E 's#^.*/alpaca_cleaned/([^/]+)/.*#\1#' <<< "${INPUT_JSONL}")"
+  OUTPUT_JSONL="$(dirname "${INPUT_JSONL}")/alpaca_cleaned_labeled_annotated_post_validated_gemma4.jsonl"
+  LANG_TAG="$(basename "$(dirname "${INPUT_JSONL}")")"
 
   cmd=(
     python -m alpaca_localization.validate_translation_coherence
@@ -55,3 +73,5 @@ for INPUT_JSONL in "${DATASETS[@]}"; do
 
   "${cmd[@]}" 2>&1 | tee -a "${LOG_FILE}"
 done
+
+exit "${FAILED}"

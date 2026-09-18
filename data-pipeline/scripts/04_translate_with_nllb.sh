@@ -3,17 +3,19 @@ set -euo pipefail
 
 PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_DIR="$(cd "${PIPELINE_DIR}/.." && pwd)"
+source "${PIPELINE_DIR}/scripts/languages.sh"
 export PYTHONPATH="${PIPELINE_DIR}/src${PYTHONPATH:+:${PYTHONPATH}}"
+ALPACA_ROOT="${ALPACA_ROOT:-${REPO_DIR}/data/alpaca_multilingual}"
 
-INPUT="${INPUT:-/mnt/mirror1/aleixsant/alpaca_cleaned/en/alpaca_cleaned_labeled_annotated.jsonl}"
-OUTPUT_ROOT="${OUTPUT_ROOT:-/mnt/mirror1/aleixsant/alpaca_cleaned}"
+INPUT="${INPUT:-${ALPACA_ROOT}/en/alpaca_cleaned_labeled_annotated_gemma4.jsonl}"
+OUTPUT_ROOT="${OUTPUT_ROOT:-${ALPACA_ROOT}}"
 OUTPUT_FILENAME="${OUTPUT_FILENAME:-alpaca_cleaned_labeled_translated.jsonl}"
 LOG_ROOT="${LOG_ROOT:-${REPO_DIR}/logs}"
 LOG_BASENAME="${LOG_BASENAME:-translate_with_nllb.log}"
 
 MODEL_ID="${MODEL_ID:-facebook/nllb-200-3.3B}"
 SOURCE_LANG="${SOURCE_LANG:-en}"
-DEVICE_MAP="${DEVICE_MAP:-cuda:1}"
+DEVICE_MAP="${DEVICE_MAP:-cuda:0}"
 DTYPE="${DTYPE:-float16}"
 
 RECORD_BATCH_SIZE="${RECORD_BATCH_SIZE:-64}"
@@ -31,14 +33,12 @@ LOG_EVERY="${LOG_EVERY:-200}"
 MAX_RECORDS="${MAX_RECORDS:-0}"
 WARN_LIMIT_PER_LANG="${WARN_LIMIT_PER_LANG:-40}"
 
-RESUME="${RESUME:-false}"
+RESUME="${RESUME:-true}"
 KEEP_DISCARDED="${KEEP_DISCARDED:-false}"
 DROP_POLICY_FIELDS="${DROP_POLICY_FIELDS:-false}"
 DISABLE_TQDM="${DISABLE_TQDM:-false}"
 
-LANGS=(
-  be bg br bs ca co cs cy da de el es et eu fi fo fr ga gd gl gv hr hu is it ka lb lt lv mk mt nl nob nno pl pt ro ru sc sk sl sq sr sv uk
-)
+LANGS=("${EUROALPACA_LANGS[@]}")
 
 if [[ $# -gt 0 ]]; then
   LANGS=("$@")

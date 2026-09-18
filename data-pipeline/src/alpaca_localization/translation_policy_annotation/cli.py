@@ -23,12 +23,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--input",
-        default="/mnt/mirror1/aleixsant/alpaca_cleaned/en/alpaca_cleaned_labeled.jsonl",
+        required=True,
         help="Input JSONL path.",
     )
     parser.add_argument(
         "--output",
-        default="/mnt/mirror1/aleixsant/alpaca_cleaned/en/alpaca_cleaned_annotated.jsonl",
+        required=True,
         help="Output JSONL path.",
     )
     parser.add_argument(

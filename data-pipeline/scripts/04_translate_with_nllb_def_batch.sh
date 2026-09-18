@@ -2,9 +2,11 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+ALPACA_ROOT="${ALPACA_ROOT:-${REPO_DIR}/data/alpaca_multilingual}"
 
-INPUT="${INPUT:-/mnt/mirror1/aleixsant/alpaca_cleaned/en/alpaca_gemma4_sample_true_input_not_translatable_nonempty.jsonl}"
-OUTPUT_ROOT="${OUTPUT_ROOT:-/mnt/mirror1/aleixsant/alpaca_cleaned}"
+INPUT="${INPUT:-${ALPACA_ROOT}/en/alpaca_gemma4_sample_true_input_not_translatable_nonempty.jsonl}"
+OUTPUT_ROOT="${OUTPUT_ROOT:-${ALPACA_ROOT}}"
 OUTPUT_FILENAME="${OUTPUT_FILENAME:-alpaca_gemma4_sample_true_input_not_translatable_nonempty.jsonl}"
 SOURCE_LANG="${SOURCE_LANG:-en}"
 GPUS="${GPUS:-0 1 2 3}"

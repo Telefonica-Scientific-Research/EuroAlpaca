@@ -5,7 +5,7 @@ PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_DIR="$(cd "${PIPELINE_DIR}/.." && pwd)"
 export PYTHONPATH="${PIPELINE_DIR}/src${PYTHONPATH:+:${PYTHONPATH}}"
 
-ALPACA_ROOT="${ALPACA_ROOT:-/mnt/mirror1/aleixsant/alpaca_cleaned}"
+ALPACA_ROOT="${ALPACA_ROOT:-${REPO_DIR}/data/alpaca_multilingual}"
 INPUT_JSONL="${INPUT_JSONL:-${ALPACA_ROOT}/en/alpaca_cleaned_labeled_gemma4.jsonl}"
 OUTPUT_JSONL="${OUTPUT_JSONL:-${ALPACA_ROOT}/en/alpaca_cleaned_labeled_annotated_gemma4.jsonl}"
 PARSE_FAILURE_DIR="${PARSE_FAILURE_DIR:-${ALPACA_ROOT}/en/annotation_parse_failures}"

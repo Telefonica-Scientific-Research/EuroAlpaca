@@ -12,64 +12,9 @@ try:
 except Exception:
     tqdm = None
 
-_FENCED_JSON_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
+from .languages import LANG_NAME_BY_TAG
 
-LANG_NAME_BY_TAG = {
-    "ast": "Asturian",
-    "be": "Belarusian",
-    "bg": "Bulgarian",
-    "br": "Breton",
-    "bs": "Bosnian",
-    "ca": "Catalan",
-    "co": "Corsican",
-    "cs": "Czech",
-    "cy": "Welsh",
-    "da": "Danish",
-    "de": "German",
-    "el": "Greek",
-    "es": "Spanish",
-    "et": "Estonian",
-    "eu": "Basque",
-    "fi": "Finnish",
-    "fo": "Faroese",
-    "fr": "French",
-    "fur": "Friulian",
-    "ga": "Irish",
-    "gd": "Scottish Gaelic",
-    "gl": "Galician",
-    "gv": "Manx",
-    "hr": "Croatian",
-    "hu": "Hungarian",
-    "is": "Icelandic",
-    "it": "Italian",
-    "ka": "Georgian",
-    "lb": "Luxembourgish",
-    "lij": "Ligurian",
-    "lmo": "Lombard",
-    "lt": "Lithuanian",
-    "ltg": "Latgalian",
-    "lv": "Latvian",
-    "mk": "Macedonian",
-    "mt": "Maltese",
-    "nl": "Dutch",
-    "nno": "Norwegian Nynorsk",
-    "nob": "Norwegian Bokmal",
-    "oci": "Occitan",
-    "pl": "Polish",
-    "pt": "Portuguese",
-    "ro": "Romanian",
-    "ru": "Russian",
-    "sc": "Sardinian",
-    "scn": "Sicilian",
-    "sk": "Slovak",
-    "sl": "Slovenian",
-    "sq": "Albanian",
-    "sr": "Serbian",
-    "sv": "Swedish",
-    "szl": "Silesian",
-    "uk": "Ukrainian",
-    "vec": "Venetian",
-}
+_FENCED_JSON_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
 
 
 def iter_jsonl(path: str) -> Iterable[Tuple[int, Dict]]:
@@ -91,6 +36,35 @@ def count_nonempty_lines(path: str) -> int:
             if line.strip():
                 n += 1
     return n
+
+
+def is_localization_candidate(
+    sample: Dict,
+    sample_policy_field: str,
+    process_all_input: bool,
+) -> bool:
+    """Return whether a source record should use task-level localization."""
+    if process_all_input:
+        return True
+    return sample.get(sample_policy_field) is False
+
+
+def count_candidates(
+    path: str,
+    after_line: int,
+    sample_policy_field: str,
+    process_all_input: bool,
+) -> int:
+    return sum(
+        1
+        for line_no, sample in iter_jsonl(path)
+        if line_no > after_line
+        and is_localization_candidate(
+            sample,
+            sample_policy_field=sample_policy_field,
+            process_all_input=process_all_input,
+        )
+    )
 
 
 def load_resume_state(path: str) -> int:
@@ -393,7 +367,10 @@ def localize_for_language(args: argparse.Namespace, target_lang: str) -> None:
     if args.resume and os.path.exists(out_path):
         already_done = load_resume_state(state_path)
         if already_done <= 0:
-            already_done = count_nonempty_lines(out_path)
+            raise RuntimeError(
+                f"Cannot safely resume {out_path}: missing or invalid state file "
+                f"{state_path}. Move the partial output aside or rerun without --resume."
+            )
         mode = "a"
         quarantine_mode = "a"
         print(f"[info] Resume enabled for lang={target_lang}. Skipping input lines <= {already_done}.")
@@ -402,8 +379,12 @@ def localize_for_language(args: argparse.Namespace, target_lang: str) -> None:
         mode = "w"
         quarantine_mode = "w"
 
-    total_records = count_nonempty_lines(args.input)
-    total_to_process = max(0, total_records - already_done)
+    total_to_process = count_candidates(
+        args.input,
+        after_line=already_done,
+        sample_policy_field=args.sample_policy_field,
+        process_all_input=args.process_all_input,
+    )
     if args.max_records > 0:
         total_to_process = min(total_to_process, args.max_records)
 
@@ -416,6 +397,7 @@ def localize_for_language(args: argparse.Namespace, target_lang: str) -> None:
     processed = 0
     written = 0
     quarantined = 0
+    last_input_line = already_done
     os.makedirs(quarantine_dir, exist_ok=True)
     with open(out_path, mode, encoding="utf-8") as out_f, open(quarantine_path, quarantine_mode, encoding="utf-8") as quarantine_f:
         for line_no, sample in iter_jsonl(args.input):
@@ -423,7 +405,15 @@ def localize_for_language(args: argparse.Namespace, target_lang: str) -> None:
                 continue
             if args.max_records > 0 and processed >= args.max_records:
                 break
-
+            last_input_line = line_no
+            if not is_localization_candidate(
+                sample,
+                sample_policy_field=args.sample_policy_field,
+                process_all_input=args.process_all_input,
+            ):
+                if args.resume and line_no % 500 == 0:
+                    save_resume_state(state_path, line_no)
+                continue
             try:
                 instruction, inp, output = localize_sample_with_retries(
                     sample=sample,
@@ -477,6 +467,9 @@ def localize_for_language(args: argparse.Namespace, target_lang: str) -> None:
                     f"written={written} quarantined={quarantined} out={out_path}"
                 )
 
+    if args.resume:
+        save_resume_state(state_path, last_input_line)
+
     if pbar is not None:
         pbar.close()
 
@@ -494,20 +487,30 @@ def main() -> None:
     )
     parser.add_argument(
         "--input",
-        default="/mnt/mirror1/aleixsant/alpaca_cleaned/en/alpaca_discarted_samples.jsonl",
-        help="English discarded samples JSONL.",
+        required=True,
+        help="Policy-annotated English JSONL containing excluded samples.",
     )
     parser.add_argument(
         "--output-root",
-        default="/mnt/mirror1/aleixsant/alpaca_cleaned",
+        required=True,
         help="Root output dir. Outputs go to <output-root>/<lang>/<output-filename>.",
     )
     parser.add_argument(
         "--output-filename",
-        default="alpaca_discarted_samples_localized.jsonl",
+        default="alpaca_discarded_samples_localized.jsonl",
         help="Output filename inside each language folder.",
     )
     parser.add_argument("--target-langs", nargs="+", required=True, help="Target language tags.")
+    parser.add_argument(
+        "--sample-policy-field",
+        default="sample_translation_policy",
+        help="Boolean field whose false records require task-level localization.",
+    )
+    parser.add_argument(
+        "--process-all-input",
+        action="store_true",
+        help="Localize every input row instead of only policy-excluded rows.",
+    )
     parser.add_argument("--resume", action="store_true", help="Append and skip already-written records.")
     parser.add_argument("--max-records", type=int, default=0, help="Optional cap per target language.")
     parser.add_argument("--log-every", type=int, default=100)

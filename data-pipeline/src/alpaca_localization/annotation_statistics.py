@@ -5,7 +5,6 @@ from collections import Counter, defaultdict
 from typing import Any, Dict, Iterable, Tuple
 
 
-DEFAULT_INPUT = "/mnt/mirror1/aleixsant/alpaca_cleaned/en/alpaca_cleaned_labeled_annotated_gemma4.jsonl" #alpaca_cleaned_labeled_annotated_NEW.jsonl"
 TEXT_FIELDS = ("instruction", "input", "output")
 LIST_LABEL_FIELDS = ("secondary_tasks", "secondary_domains")
 SCALAR_LABEL_FIELDS = ("primary_task", "primary_domain")
@@ -85,7 +84,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--input",
-        default=DEFAULT_INPUT,
+        required=True,
         help="Annotated JSONL input path.",
     )
     parser.add_argument(

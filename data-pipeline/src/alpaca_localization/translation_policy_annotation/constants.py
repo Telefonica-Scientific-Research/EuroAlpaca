@@ -1,54 +1,11 @@
 """Constants used by translation-policy annotation."""
 
-LANG_NAME_BY_TAG = {
-    "be": "Belarusian",
-    "bg": "Bulgarian",
-    "br": "Breton",
-    "bs": "Bosnian",
-    "ca": "Catalan",
-    "co": "Corsican",
-    "cs": "Czech",
-    "cy": "Welsh",
-    "da": "Danish",
-    "de": "German",
-    "el": "Greek",
-    "en": "English",
-    "es": "Spanish",
-    "et": "Estonian",
-    "eu": "Basque",
-    "fi": "Finnish",
-    "fo": "Faroese",
-    "fr": "French",
-    "ga": "Irish",
-    "gd": "Scottish Gaelic",
-    "gl": "Galician",
-    "gv": "Manx",
-    "hr": "Croatian",
-    "hu": "Hungarian",
-    "is": "Icelandic",
-    "it": "Italian",
-    "ka": "Georgian",
-    "lb": "Luxembourgish",
-    "lt": "Lithuanian",
-    "lv": "Latvian",
-    "mk": "Macedonian",
-    "mt": "Maltese",
-    "nl": "Dutch",
-    "nob": "Norwegian Bokmal",
-    "nno": "Norwegian Nynorsk",
-    "pl": "Polish",
-    "pt": "Portuguese",
-    "ro": "Romanian",
-    "ru": "Russian",
-    "sc": "Sardinian",
-    "sk": "Slovak",
-    "sl": "Slovenian",
-    "sq": "Albanian",
-    "sr": "Serbian",
-    "sv": "Swedish",
-    "uk": "Ukrainian",
-}
-DEFAULT_TARGET_LANGS = [tag for tag in LANG_NAME_BY_TAG.keys() if tag != "en"]
+from ..languages import LANG_NAME_BY_TAG as TARGET_LANG_NAME_BY_TAG
+from ..languages import TARGET_LANGS
+
+
+LANG_NAME_BY_TAG = {"en": "English", **TARGET_LANG_NAME_BY_TAG}
+DEFAULT_TARGET_LANGS = list(TARGET_LANGS)
 
 POLICY_FIELDS = ("instruction", "input", "output")
 

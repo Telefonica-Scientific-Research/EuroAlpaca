@@ -9,123 +9,10 @@ try:
 except Exception:
     tqdm = None
 
-LANG_NAME_BY_TAG = {
-    "ast": "Asturian",
-    "be": "wj",
-    "bg": "Bulgarian",
-    "br": "Breton",
-    "bs": "Bosnian",
-    "ca": "Catalan",
-    "co": "Corsican",
-    "cs": "Czech",
-    "cy": "Welsh",
-    "da": "Danish",
-    "de": "German",
-    "el": "Greek",
-    "en": "English",
-    "es": "Spanish",
-    "et": "Estonian",
-    "eu": "Basque",
-    "fi": "Finnish",
-    "fo": "Faroese",
-    "fr": "French",
-    "fur": "Friulian",
-    "ga": "Irish",
-    "gd": "Scottish Gaelic",
-    "gl": "Galician",
-    "gv": "Manx",
-    "hr": "Croatian",
-    "hu": "Hungarian",
-    "is": "Icelandic",
-    "it": "Italian",
-    "ka": "Georgian",
-    "lb": "Luxembourgish",
-    "lij": "Ligurian",
-    "lmo": "Lombard",
-    "lt": "Lithuanian",
-    "ltg": "Latgalian",
-    "lv": "Latvian",
-    "mk": "Macedonian",
-    "mt": "Maltese",
-    "nl": "Dutch",
-    "nno": "Norwegian Nynorsk",
-    "nob": "Norwegian Bokmal",
-    "oci": "Occitan",
-    "pl": "Polish",
-    "pt": "Portuguese",
-    "ro": "Romanian",
-    "ru": "Russian",
-    "srd": "Sardinian",
-    "scn": "Sicilian",
-    "sk": "Slovak",
-    "sl": "Slovenian",
-    "sq": "Albanian",
-    "sr": "Serbian",
-    "sv": "Swedish",
-    "szl": "Silesian",
-    "uk": "Ukrainian",
-    "vec": "Venetian",
-}
+from .languages import NLLB_LANG_BY_TAG, TARGET_LANGS
 
-NLLB_LANG_BY_TAG = {
-    "ast": "ast_Latn",
-    "be": "bel_Cyrl",
-    "bg": "bul_Cyrl",
-    "br": "bre_Latn",
-    "bs": "bos_Latn",
-    "ca": "cat_Latn",
-    "co": "cos_Latn",
-    "cs": "ces_Latn",
-    "cy": "cym_Latn",
-    "da": "dan_Latn",
-    "de": "deu_Latn",
-    "el": "ell_Grek",
-    "en": "eng_Latn",
-    "es": "spa_Latn",
-    "et": "est_Latn",
-    "eu": "eus_Latn",
-    "fi": "fin_Latn",
-    "fo": "fao_Latn",
-    "fr": "fra_Latn",
-    "fur": "fur_Latn",
-    "ga": "gle_Latn",
-    "gd": "gla_Latn",
-    "gl": "glg_Latn",
-    "gv": "glv_Latn",
-    "hr": "hrv_Latn",
-    "hu": "hun_Latn",
-    "is": "isl_Latn",
-    "it": "ita_Latn",
-    "ka": "kat_Geor",
-    "lb": "ltz_Latn",
-    "lij": "lij_Latn",
-    "lmo": "lmo_Latn",
-    "lt": "lit_Latn",
-    "ltg": "ltg_Latn",
-    "lv": "lvs_Latn",
-    "mk": "mkd_Cyrl",
-    "mt": "mlt_Latn",
-    "nl": "nld_Latn",
-    "nno": "nno_Latn",
-    "nob": "nob_Latn",
-    "oci": "oci_Latn",
-    "pl": "pol_Latn",
-    "pt": "por_Latn",
-    "ro": "ron_Latn",
-    "ru": "rus_Cyrl",
-    "sc": "srd_Latn",
-    "scn": "scn_Latn",
-    "sk": "slk_Latn",
-    "sl": "slv_Latn",
-    "sq": "als_Latn",
-    "sr": "srp_Cyrl",
-    "sv": "swe_Latn",
-    "szl": "szl_Latn",
-    "uk": "ukr_Cyrl",
-    "vec": "vec_Latn",
-}
 
-DEFAULT_TARGET_LANGS = [tag for tag in LANG_NAME_BY_TAG if tag != "en"]
+DEFAULT_TARGET_LANGS = list(TARGET_LANGS)
 
 
 def iter_jsonl(path: str) -> Iterable[Tuple[int, Dict]]:
@@ -457,12 +344,12 @@ def main() -> None:
     # Data locations.
     parser.add_argument(
         "--input",
-        default="/mnt/mirror1/aleixsant/alpaca_cleaned/en/alpaca_cleaned_labeled_annotated.jsonl",
+        required=True,
         help="Annotated input JSONL path.",
     )
     parser.add_argument(
         "--output-root",
-        default="/mnt/mirror1/aleixsant/alpaca_cleaned",
+        required=True,
         help="Root output dir. Outputs go to <output-root>/<lang>/<output-filename>.",
     )
     parser.add_argument(
@@ -566,6 +453,11 @@ def main() -> None:
         if args.resume and os.path.exists(out_path):
             mode = "a"
             already_line = load_resume_state(state_path)
+            if already_line <= 0:
+                raise RuntimeError(
+                    f"Cannot safely resume {out_path}: missing or invalid state file "
+                    f"{state_path}. Move the partial output aside or rerun without --resume."
+                )
             print(
                 f"[info] Resume enabled for lang={target_lang}. "
                 f"Skipping input lines <= {already_line}."

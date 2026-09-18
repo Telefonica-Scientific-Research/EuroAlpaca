@@ -10,66 +10,9 @@ try:
 except Exception:
     tqdm = None
 
-_JSON_OBJ_RE = re.compile(r"\{.*\}", re.DOTALL)
+from .languages import LANG_NAME_BY_TAG
 
-LANG_NAME_BY_TAG = {
-    "ast": "Asturian",
-    "be": "Belarusian",
-    "bg": "Bulgarian",
-    "br": "Breton",
-    "bs": "Bosnian",
-    "ca": "Catalan",
-    "co": "Corsican",
-    "cs": "Czech",
-    "cy": "Welsh",
-    "da": "Danish",
-    "de": "German",
-    "el": "Greek",
-    "en": "English",
-    "es": "Spanish",
-    "et": "Estonian",
-    "eu": "Basque",
-    "fi": "Finnish",
-    "fo": "Faroese",
-    "fr": "French",
-    "fur": "Friulian",
-    "ga": "Irish",
-    "gd": "Scottish Gaelic",
-    "gl": "Galician",
-    "gv": "Manx",
-    "hr": "Croatian",
-    "hu": "Hungarian",
-    "is": "Icelandic",
-    "it": "Italian",
-    "ka": "Georgian",
-    "lb": "Luxembourgish",
-    "lij": "Ligurian",
-    "lmo": "Lombard",
-    "lt": "Lithuanian",
-    "ltg": "Latgalian",
-    "lv": "Latvian",
-    "mk": "Macedonian",
-    "mt": "Maltese",
-    "nl": "Dutch",
-    "nno": "Norwegian Nynorsk",
-    "nob": "Norwegian Bokmal",
-    "oci": "Occitan",
-    "pl": "Polish",
-    "pt": "Portuguese",
-    "ro": "Romanian",
-    "ru": "Russian",
-    "sc": "Sardinian",
-    "scn": "Sicilian",
-    "sk": "Slovak",
-    "sl": "Slovenian",
-    "sq": "Albanian",
-    "sr": "Serbian",
-    "sv": "Swedish",
-    "sc": "Sardinian",
-    "szl": "Silesian",
-    "uk": "Ukrainian",
-    "vec": "Venetian",
-}
+_JSON_OBJ_RE = re.compile(r"\{.*\}", re.DOTALL)
 
 
 def iter_jsonl(path: str) -> Iterable[Tuple[int, Dict]]:
@@ -446,7 +389,7 @@ def main() -> None:
     parser.add_argument("--resume", action="store_true", help="Resume from existing output.")
     parser.add_argument("--max-records", type=int, default=0, help="Optional cap for quick tests.")
     parser.add_argument("--log-every", type=int, default=100, help="Progress print interval.")
-    parser.add_argument("--gemma-endpoint", default="http://127.0.0.1:10007/chat/completions")
+    parser.add_argument("--gemma-endpoint", default="http://127.0.0.1:10001/chat/completions")
     parser.add_argument("--gemma-timeout", type=int, default=130)
     parser.add_argument("--gemma-max-tokens", type=int, default=320)
     parser.add_argument("--gemma-temperature", type=float, default=0.0)

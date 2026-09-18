@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_RUNNER="${SCRIPT_DIR}/04_translate_with_nllb.sh"
+source "${SCRIPT_DIR}/languages.sh"
 
 GPU_LIST_STR="${GPUS:-0 1}"
 read -r -a GPUS_ARR <<< "${GPU_LIST_STR}"
@@ -11,11 +12,7 @@ if [[ ${#GPUS_ARR[@]} -eq 0 ]]; then
   exit 1
 fi
 
-DEFAULT_LANGS=(
-  be bg br bs ca co cs cy da de el es et eu fi fo fr ga gd gl gv hr hu is it ka lb lt lv mk mt nl nob nno pl pt ro ru sc sk sl sq sr sv uk
-)
-
-LANGS=("${DEFAULT_LANGS[@]}")
+LANGS=("${EUROALPACA_LANGS[@]}")
 if [[ $# -gt 0 ]]; then
   LANGS=("$@")
 fi

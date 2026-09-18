@@ -141,11 +141,11 @@ def query_gemma_server(
     max_tokens: int = 160,          # bumped slightly since we now output 4 fields
     temperature: float = 0.0,
     stream: bool = False,
-    endpoint: str = "http://127.0.0.1:10006/chat/completions",
+    endpoint: str = "http://127.0.0.1:10001/chat/completions",
     timeout: int = 130,
 ) -> str:
     """
-    Query a local OpenAI-compatible /chat/completions endpoint (Gemma server on port 10006).
+    Query a local OpenAI-compatible /chat/completions endpoint.
     """
     try:
         resp = requests.post(
@@ -312,12 +312,16 @@ def main():
     parser = argparse.ArgumentParser(description="Label Alpaca JSONL with task + domain types using a local Gemma server.")
     parser.add_argument("--input", required=True, help="Input JSONL (instruction,input,output).")
     parser.add_argument("--output", required=True, help="Output JSONL (adds primary/secondary task + domain fields).")
-    parser.add_argument("--endpoint", default="http://127.0.0.1:10006/chat/completions", help="Chat completions endpoint.")
+    parser.add_argument("--endpoint", default="http://127.0.0.1:10001/chat/completions", help="Chat completions endpoint.")
     parser.add_argument("--max-output-tokens", type=int, default=160, help="Max tokens for classification output.")
     parser.add_argument("--temperature", type=float, default=0.0, help="Temperature (0 recommended for labeling).")
     parser.add_argument("--resume", action="store_true", help="Resume by skipping already-written output lines.")
     parser.add_argument("--timeout", type=int, default=130, help="HTTP timeout seconds.")
     args = parser.parse_args()
+
+    output_parent = os.path.dirname(os.path.abspath(args.output))
+    if output_parent:
+        os.makedirs(output_parent, exist_ok=True)
 
     already_done = 0
     if args.resume and os.path.exists(args.output):
