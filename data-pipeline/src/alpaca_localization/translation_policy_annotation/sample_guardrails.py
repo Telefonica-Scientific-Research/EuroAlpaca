@@ -324,12 +324,12 @@ def _style_transfer_sample_discard_reason(instruction: str, input_text: str) -> 
     return _reason_if_matches(rb.STYLE_TRANSFER_SAMPLE_DISCARD_REGEXES, text, "style transfer language form")
 
 
-def _summarization_sample_discard_reason(instruction: str) -> str:
-    """Apply summarization-task guardrail logic."""
+def _summarisation_sample_discard_reason(instruction: str) -> str:
+    """Apply summarisation-task guardrail logic."""
     return _reason_if_matches(
-        rb.SUMMARIZATION_SAMPLE_DISCARD_REGEXES,
+        rb.SUMMARISATION_SAMPLE_DISCARD_REGEXES,
         instruction.lower(),
-        "summarization format constraint",
+        "summarisation format constraint",
     )
 
 def _surface_form_sample_discard_reason(instruction: str, input_text: str, output_text: str) -> str:
@@ -460,7 +460,7 @@ TASK_SAMPLE_DISCARD_RULES = {
     "question_answering": (lambda instruction, input_text, output_text: _question_answering_sample_discard_reason(instruction, input_text), True),
     "reasoning": (lambda instruction, input_text, output_text: _reasoning_sample_discard_reason(instruction, input_text), True),
     "style_transfer": (lambda instruction, input_text, output_text: _style_transfer_sample_discard_reason(instruction, input_text), True),
-    "summarization": (lambda instruction, input_text, output_text: _summarization_sample_discard_reason(instruction), True),
+    "summarisation": (lambda instruction, input_text, output_text: _summarisation_sample_discard_reason(instruction), True),
     "translation": (lambda instruction, input_text, output_text: _translation_sample_discard_reason(instruction, input_text), True),
 }
 

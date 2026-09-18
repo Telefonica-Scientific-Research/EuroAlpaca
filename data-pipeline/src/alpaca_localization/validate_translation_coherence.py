@@ -2,7 +2,9 @@
 import argparse
 import json
 import os
+import random
 import re
+import time
 from typing import Dict, Iterable, Optional, Tuple
 
 try:
@@ -174,6 +176,118 @@ def build_validation_prompt(
         "- Keep empty input empty when appropriate.\n"
         "- Do not use markdown fences. Do not return multiple JSON objects. Do not explain.\n"
     )
+
+
+def build_validation_repair_prompt(
+    original_prompt: str,
+    previous_response: str,
+    error: str,
+    max_raw_chars: int,
+) -> str:
+    previous_response = truncate_text(previous_response.strip(), max_raw_chars)
+    return (
+        f"{original_prompt}\n\n"
+        "Your previous response could not be used.\n"
+        f"Validation error: {error}\n\n"
+        "Previous response:\n"
+        f"{previous_response}\n\n"
+        "Retry now. Return ONLY one valid JSON object with this schema:\n"
+        "{\n"
+        '  "is_coherent": true,\n'
+        '  "issues": "",\n'
+        '  "changes": {}\n'
+        "}\n"
+        "The changes object may contain only modified string fields among "
+        "instruction, input, and output. Do not use markdown or explain."
+    )
+
+
+def validate_response_schema(parsed: Optional[dict]) -> str:
+    if not isinstance(parsed, dict):
+        return "response is not a valid JSON object"
+
+    missing = [key for key in ("is_coherent", "issues", "changes") if key not in parsed]
+    if missing:
+        return f"missing required fields: {missing}"
+    if not isinstance(parsed["is_coherent"], bool):
+        return "is_coherent must be a boolean"
+    if not isinstance(parsed["issues"], str):
+        return "issues must be a string"
+    if not isinstance(parsed["changes"], dict):
+        return "changes must be an object"
+
+    invalid_change_fields = set(parsed["changes"]) - {"instruction", "input", "output"}
+    if invalid_change_fields:
+        return f"changes contains unsupported fields: {sorted(invalid_change_fields)}"
+    for field, value in parsed["changes"].items():
+        if not isinstance(value, str):
+            return f"changes.{field} must be a string"
+
+    if parsed["is_coherent"] and parsed["issues"].strip():
+        return "issues must be empty when is_coherent is true"
+    if not parsed["is_coherent"] and not parsed["issues"].strip():
+        return "issues must explain why the sample is not coherent"
+    if not parsed["is_coherent"] and not parsed["changes"]:
+        return "changes must repair a sample marked as not coherent"
+    return ""
+
+
+def query_validation_with_retries(
+    prompt: str,
+    args: argparse.Namespace,
+    line_no: int,
+    language_tag: str,
+) -> Tuple[Optional[dict], str, str]:
+    last_raw = ""
+    last_error = ""
+
+    for prompt_attempt in range(1, args.gemma_max_attempts + 1):
+        query_prompt = (
+            prompt
+            if prompt_attempt == 1
+            else build_validation_repair_prompt(
+                original_prompt=prompt,
+                previous_response=last_raw,
+                error=last_error,
+                max_raw_chars=args.error_raw_chars,
+            )
+        )
+
+        for call_attempt in range(1, args.gemma_backoff_retries + 1):
+            last_raw = query_gemma_server(
+                prompt=query_prompt,
+                endpoint=args.gemma_endpoint,
+                timeout=args.gemma_timeout,
+                max_tokens=args.gemma_max_tokens,
+                temperature=args.gemma_temperature,
+            )
+            parsed = extract_first_json_object(last_raw)
+            last_error = validate_response_schema(parsed)
+            if not last_error:
+                if prompt_attempt > 1 or call_attempt > 1:
+                    print(
+                        f"[info] line={line_no} lang={language_tag} recovered valid "
+                        f"validation JSON on prompt attempt {prompt_attempt}, "
+                        f"call attempt {call_attempt}"
+                    )
+                return parsed, last_raw, ""
+
+            if call_attempt < args.gemma_backoff_retries:
+                sleep = args.gemma_backoff_base_sleep * (2 ** (call_attempt - 1))
+                sleep += random.uniform(0, 0.25)
+                print(
+                    f"[warn] line={line_no} lang={language_tag} invalid validation JSON "
+                    f"on call attempt {call_attempt}/{args.gemma_backoff_retries}: "
+                    f"{last_error}. Retrying in {sleep:.2f}s..."
+                )
+                time.sleep(sleep)
+
+        print(
+            f"[warn] line={line_no} lang={language_tag} invalid validation JSON "
+            f"on prompt attempt {prompt_attempt}/{args.gemma_max_attempts}: {last_error}"
+        )
+
+    return None, last_raw, last_error
 
 
 def _normalize_bool(v: object, default: bool) -> bool:
@@ -393,6 +507,9 @@ def main() -> None:
     parser.add_argument("--gemma-timeout", type=int, default=130)
     parser.add_argument("--gemma-max-tokens", type=int, default=320)
     parser.add_argument("--gemma-temperature", type=float, default=0.0)
+    parser.add_argument("--gemma-max-attempts", type=int, default=3)
+    parser.add_argument("--gemma-backoff-retries", type=int, default=2)
+    parser.add_argument("--gemma-backoff-base-sleep", type=float, default=0.8)
     parser.add_argument(
         "--error-raw-chars",
         type=int,
@@ -406,6 +523,13 @@ def main() -> None:
     )
     parser.add_argument("--disable-tqdm", action="store_true", help="Disable tqdm progress bars.")
     args = parser.parse_args()
+
+    if args.gemma_max_attempts < 1:
+        raise ValueError("--gemma-max-attempts must be >= 1")
+    if args.gemma_backoff_retries < 1:
+        raise ValueError("--gemma-backoff-retries must be >= 1")
+    if args.gemma_backoff_base_sleep < 0:
+        raise ValueError("--gemma-backoff-base-sleep must be >= 0")
 
     if not os.path.exists(args.input):
         raise FileNotFoundError(f"Input file does not exist: {args.input}")
@@ -478,9 +602,12 @@ def main() -> None:
     print(f"[info] Quarantine: {quarantine_path}")
     print(f"[info] Language: {language_tag} ({language_name})")
     print(f"[info] Gemma endpoint: {args.gemma_endpoint}")
+    print(f"[info] Gemma max prompt attempts: {args.gemma_max_attempts}")
+    print(f"[info] Gemma backoff retries per prompt: {args.gemma_backoff_retries}")
 
     processed = 0
-    parse_failed = 0
+    written = 0
+    quarantined = 0
 
     os.makedirs(quarantine_dir, exist_ok=True)
     with open(args.output, mode, encoding="utf-8") as out_f, open(
@@ -497,23 +624,21 @@ def main() -> None:
                 language_tag=language_tag,
                 language_name=language_name,
             )
-            raw = query_gemma_server(
+            parsed, raw, validation_error = query_validation_with_retries(
                 prompt=prompt,
-                endpoint=args.gemma_endpoint,
-                timeout=args.gemma_timeout,
-                max_tokens=args.gemma_max_tokens,
-                temperature=args.gemma_temperature,
+                args=args,
+                line_no=_line_no,
+                language_tag=language_tag,
             )
-            parsed = extract_first_json_object(raw)
             enriched, status = apply_validation_result(sample=sample, parsed=parsed, line_no=_line_no)
             if status != "ok":
-                parse_failed += 1
+                quarantined += 1
                 raw_preview = truncate_text(raw, args.error_raw_chars)
                 quarantine_record = {
                     "line_no": _line_no,
                     "sample_id": _resolve_output_sample_id(sample=sample, line_no=_line_no),
                     "language": language_tag,
-                    "error": "Gemma response is not a valid JSON object",
+                    "error": validation_error,
                     "raw_gemma_response": raw_preview,
                     "source_sample": sample,
                     "output_sample": enriched,
@@ -529,27 +654,28 @@ def main() -> None:
                     pbar.update(1)
                 if processed % args.log_every == 0:
                     print(
-                        f"[info] Processed {processed} samples... "
-                        f"(parse_failed={parse_failed})"
+                        f"[info] processed={processed} written={written} "
+                        f"quarantined={quarantined}"
                     )
                 continue
             out_f.write(json.dumps(enriched, ensure_ascii=False) + "\n")
+            written += 1
 
             processed += 1
             if pbar is not None:
                 pbar.update(1)
             if processed % args.log_every == 0:
                 print(
-                    f"[info] Processed {processed} samples... "
-                    f"(parse_failed={parse_failed})"
+                    f"[info] processed={processed} written={written} "
+                    f"quarantined={quarantined}"
                 )
 
     if pbar is not None:
         pbar.close()
 
     print(
-        f"[done] Wrote {processed} records to: {args.output} "
-        f"(parse_failed={parse_failed})"
+        f"[done] processed={processed} written={written} quarantined={quarantined} "
+        f"output={args.output}"
     )
 
 

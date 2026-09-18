@@ -174,17 +174,21 @@ one language before starting all 50.
 
 ### Failure handling and quarantine
 
-Model responses that cannot be parsed are preserved for inspection.
+Model responses that cannot be parsed or do not match the required schema are
+preserved for inspection.
 
 - Stage 3 writes policy-annotation failures to
   `${ALPACA_ROOT}/en/annotation_parse_failures/`. The affected sample remains
   in the annotated data and is conservatively routed to stage 5.
 - Stage 5 writes failed localizations to
   `${ALPACA_ROOT}/{lang}/quarantine/alpaca_discarded_samples_localized_gemma4_quarantine.jsonl`.
-  These samples are absent from stage 6 until they are successfully localized.
+  It requires string `instruction`, `input` and `output` fields. `instruction`
+  and `output` must be non-empty, while `input` may be empty. Failed samples are
+  absent from stage 6 until they are successfully localized.
 - Stage 7 writes failed validation responses to
   `${ALPACA_ROOT}/{lang}/quarantine/alpaca_post_correction_quarantine.jsonl`.
-  Stage 8 retains the corresponding stage-6 sample without a correction.
+  This happens only after its repair attempts fail. Stage 8 retains the
+  corresponding stage-6 sample without a correction.
 
 Resume mode treats quarantined samples as already processed and does not retry
 them automatically. Review them manually or reprocess them with a compatible
@@ -193,12 +197,13 @@ contain diagnostic records and must not be appended directly to a dataset.
 For a clean rerun, use a new empty `ALPACA_ROOT`. Keep each stage-4 or stage-5
 partial output together with its adjacent `.state.json` file.
 
-For a complete language dataset, the number of stage-4 translated samples plus
-the number of successful stage-5 localizations must equal the number of stage-3
-source samples. The final file should also have unique `sample_id` values, the
-expected language tag and the five documented fields. Review the stage-8
-matched-validation count to identify samples retained without successful
-stage-7 validation.
+Stage 6 verifies that the stage-4 and stage-5 outputs form an exact,
+non-overlapping partition of the stage-3 `sample_id` values. It stops before
+assembly if a sample is missing, duplicated or unexpected. Resolve any stage-5
+quarantine before continuing. The final file should have the expected language
+tag and the five documented fields. Review the stage-8 matched-validation count
+to identify samples retained without successful stage-7 validation.
+Stage 8 rejects duplicate validation IDs and IDs absent from the stage-6 input.
 
 After stage 3, the following command produces a textual policy summary without
 invoking a model.
@@ -240,6 +245,10 @@ sequence.
 
 This exercises the live model stages on ten samples. It requires both the Gemma
 endpoint and enough GPU memory to load NLLB-200 3.3B.
+
+In stage 4, `MAX_RECORDS` counts source rows, including rows routed to stage 5.
+Limit stage 0 as shown below when testing a subset. Otherwise, stage 6 will
+correctly reject the incomplete branches.
 
 ```bash
 export ALPACA_ROOT=/tmp/euroalpaca-smoke/data

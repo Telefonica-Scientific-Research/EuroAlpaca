@@ -906,7 +906,7 @@ STYLE_TRANSFER_SAMPLE_DISCARD_REGEXES = [
     r"\bitalici[sz]e\b.{0,40}\bword\b",
     r"\b(singular possessive|parallel structure)\b",
 ]
-SUMMARIZATION_SAMPLE_DISCARD_REGEXES = [
+SUMMARISATION_SAMPLE_DISCARD_REGEXES = [
     r"\b(tweet|twitter)\b",
     r"\btweet[- ]length\b",
     r"\bcharacter limit\b",

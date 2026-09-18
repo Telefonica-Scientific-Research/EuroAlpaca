@@ -16,7 +16,7 @@ All runners can be invoked from the repository root. They add
 | 3 | `scripts/03_annotate_translation_policies.sh` | Add sample and field routing policies. |
 | 4 | `scripts/04_translate_with_nllb.sh` | Translate policy-approved fields with NLLB. |
 | 5 | `scripts/05_localize_discarded_samples.sh` | Recreate policy-excluded tasks with Gemma. |
-| 6 | `scripts/06_assemble_prevalidation_dataset.sh` | Join the two non-overlapping branches. |
+| 6 | `scripts/06_assemble_prevalidation_dataset.sh` | Verify completeness and join the two non-overlapping branches. |
 | 7 | `scripts/07_validate_translation_coherence.sh` | Validate and correct localized samples. |
 | 8 | `scripts/08_merge_validated_outputs.sh` | Produce minimal final JSONL records. |
 

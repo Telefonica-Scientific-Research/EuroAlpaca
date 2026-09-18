@@ -82,15 +82,26 @@ def pick_language(original: Dict, validated: Optional[Dict], fallback_lang: str)
 
 def build_validated_index(validated_path: str) -> Dict[object, Dict]:
     by_id: Dict[object, Dict] = {}
-    duplicates = 0
     for line_no, sample in iter_jsonl(validated_path):
         sid = resolve_sample_id(sample, fallback_line_no=line_no)
         if sid in by_id:
-            duplicates += 1
+            raise RuntimeError(
+                f"Validated file has duplicate sample_id {sid!r} at line {line_no}."
+            )
         by_id[sid] = sample
-    if duplicates > 0:
-        print(f"[warn] Found {duplicates} duplicate sample_id values in validated file; last one kept.")
     return by_id
+
+
+def collect_original_ids(original_path: str) -> set:
+    sample_ids = set()
+    for line_no, sample in iter_jsonl(original_path):
+        sid = resolve_sample_id(sample, fallback_line_no=line_no)
+        if sid in sample_ids:
+            raise RuntimeError(
+                f"Original file has duplicate sample_id {sid!r} at line {line_no}."
+            )
+        sample_ids.add(sid)
+    return sample_ids
 
 
 def main() -> None:
@@ -122,6 +133,14 @@ def main() -> None:
         os.makedirs(out_parent, exist_ok=True)
 
     validated_by_id = build_validated_index(args.validated)
+    original_ids = collect_original_ids(args.original)
+    unexpected_ids = set(validated_by_id).difference(original_ids)
+    if unexpected_ids:
+        examples = sorted(unexpected_ids, key=lambda value: str(value))[:10]
+        raise RuntimeError(
+            f"Validated file contains {len(unexpected_ids)} sample_id values absent "
+            f"from the original file, examples={examples}."
+        )
 
     processed = 0
     matched = 0

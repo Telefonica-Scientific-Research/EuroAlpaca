@@ -52,6 +52,11 @@ def main() -> None:
     parser.add_argument("--translated", required=True, help="Stage-4 per-language JSONL path.")
     parser.add_argument("--localized-discarded", required=True, help="Stage-5 per-language JSONL path.")
     parser.add_argument(
+        "--expected-source",
+        required=True,
+        help="Stage-3 annotated source JSONL used to verify the complete sample_id set.",
+    )
+    parser.add_argument(
         "--output",
         required=True,
         help="Output path (normally alpaca_cleaned_labeled_annotated_gemma4.jsonl).",
@@ -61,6 +66,7 @@ def main() -> None:
 
     translated_by_id = load_index(args.translated, "translated")
     localized_by_id = load_index(args.localized_discarded, "localized_discarded")
+    expected_by_id = load_index(args.expected_source, "expected_source")
 
     overlap = set(translated_by_id).intersection(localized_by_id)
     if overlap:
@@ -68,6 +74,21 @@ def main() -> None:
         raise RuntimeError(
             f"sample_id overlap between translated and localized_discarded: "
             f"{len(overlap)} ids, examples={example}"
+        )
+
+    assembled_ids = set(translated_by_id).union(localized_by_id)
+    expected_ids = set(expected_by_id)
+    missing = expected_ids.difference(assembled_ids)
+    unexpected = assembled_ids.difference(expected_ids)
+    if missing or unexpected:
+        missing_examples = sorted(missing, key=lambda x: str(x))[:10]
+        unexpected_examples = sorted(unexpected, key=lambda x: str(x))[:10]
+        raise RuntimeError(
+            "Stage-6 sample_id completeness check failed: "
+            f"expected={len(expected_ids)}, assembled={len(assembled_ids)}, "
+            f"missing={len(missing)} examples={missing_examples}, "
+            f"unexpected={len(unexpected)} examples={unexpected_examples}. "
+            "Resolve stage-4/stage-5 failures or quarantined samples before assembly."
         )
 
     merged_rows: List[Dict] = []

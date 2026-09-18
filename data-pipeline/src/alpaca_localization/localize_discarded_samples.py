@@ -276,17 +276,20 @@ def validate_localized_fields(parsed: Optional[dict]) -> Tuple[Optional[Tuple[st
     if missing:
         return None, f"missing required fields: {missing}"
 
-    fields: List[str] = []
     for field in ("instruction", "input", "output"):
         value = parsed.get(field)
-        if isinstance(value, str):
-            fields.append(value)
-        elif value is None:
-            fields.append("")
-        else:
-            fields.append(json.dumps(value, ensure_ascii=False))
+        if not isinstance(value, str):
+            return None, f"field {field!r} must be a string, got {type(value).__name__}"
 
-    return (fields[0], fields[1], fields[2]), ""
+    instruction = parsed["instruction"]
+    inp = parsed["input"]
+    output = parsed["output"]
+    if not instruction.strip():
+        return None, "field 'instruction' must be non-empty"
+    if not output.strip():
+        return None, "field 'output' must be non-empty"
+
+    return (instruction, inp, output), ""
 
 
 def truncate_text(text: str, max_chars: int) -> str:
@@ -314,19 +317,20 @@ def localize_sample_with_retries(
         query_prompt = prompt if attempt == 1 else build_retry_prompt(prompt, raw, last_error)
 
         def do_call_and_parse() -> Tuple[Tuple[str, str, str], str]:
-            call_raw = query_gemma_server(
+            nonlocal raw
+            raw = query_gemma_server(
                 prompt=query_prompt,
                 endpoint=args.gemma_endpoint,
                 timeout=args.gemma_timeout,
                 max_tokens=args.gemma_max_tokens,
                 temperature=args.gemma_temperature,
             )
-            parsed = extract_first_json_object(call_raw)
+            parsed = extract_first_json_object(raw)
             fields, error = validate_localized_fields(parsed)
             if fields is None:
-                raw_preview = truncate_text(call_raw, args.error_raw_chars)
+                raw_preview = truncate_text(raw, args.error_raw_chars)
                 raise ValueError(error + f"; raw={raw_preview}")
-            return fields, call_raw
+            return fields, raw
 
         try:
             fields, raw = call_with_backoff(

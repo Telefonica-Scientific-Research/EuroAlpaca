@@ -7,7 +7,7 @@ from typing import Dict, List, TextIO
 ALL_TASK_TYPES: List[str] = [
     "question_answering",
     "reasoning",
-    "summarization",
+    "summarisation",
     "translation",
     "paraphrasing",
     "classification",

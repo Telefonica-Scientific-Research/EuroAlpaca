@@ -36,23 +36,73 @@ def count_nonempty_lines(path: str) -> int:
     return n
 
 
-def load_resume_state(path: str) -> int:
+def load_resume_state(path: str) -> Tuple[int, int]:
     if not os.path.exists(path):
-        return 0
+        return 0, -1
     try:
         with open(path, "r", encoding="utf-8") as f:
             obj = json.load(f)
-        v = obj.get("last_input_line", 0)
-        return int(v) if isinstance(v, int) else 0
+        last_input_line = obj.get("last_input_line", 0)
+        output_offset = obj.get("output_offset", -1)
+        if not isinstance(last_input_line, int) or not isinstance(output_offset, int):
+            return 0, -1
+        return last_input_line, output_offset
     except Exception:
-        return 0
+        return 0, -1
 
 
-def save_resume_state(path: str, last_input_line: int) -> None:
+def save_resume_state(path: str, last_input_line: int, output_offset: int) -> None:
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
-        json.dump({"last_input_line": int(last_input_line)}, f, ensure_ascii=False)
+        json.dump(
+            {
+                "last_input_line": int(last_input_line),
+                "output_offset": int(output_offset),
+            },
+            f,
+            ensure_ascii=False,
+        )
+        f.flush()
+        os.fsync(f.fileno())
     os.replace(tmp, path)
+    state_dir = os.path.dirname(os.path.abspath(path))
+    dir_fd = os.open(state_dir, os.O_RDONLY)
+    try:
+        os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)
+
+
+def commit_resume_state(out_f, state_path: str, last_input_line: int) -> None:
+    """Durably write output before advancing its resume checkpoint."""
+    out_f.flush()
+    os.fsync(out_f.fileno())
+    save_resume_state(state_path, last_input_line, out_f.tell())
+
+
+def prepare_resume_output(out_path: str, state_path: str) -> int:
+    """Restore output to its last committed offset and return the input line."""
+    last_input_line, output_offset = load_resume_state(state_path)
+    if last_input_line <= 0 or output_offset < 0:
+        raise RuntimeError(
+            f"Cannot safely resume {out_path}: missing, invalid, or legacy state file "
+            f"{state_path}. Move the partial output and state aside or rerun without --resume."
+        )
+
+    output_size = os.path.getsize(out_path)
+    if output_offset > output_size:
+        raise RuntimeError(
+            f"Cannot safely resume {out_path}: checkpoint offset {output_offset} "
+            f"exceeds output size {output_size}."
+        )
+
+    # Output written after the last checkpoint was never committed. Removing it
+    # prevents duplicate rows when those input lines are processed again.
+    with open(out_path, "r+b") as out_f:
+        out_f.truncate(output_offset)
+        out_f.flush()
+        os.fsync(out_f.fileno())
+    return last_input_line
 
 
 def get_sample_include(sample: Dict, sample_policy_key: str) -> bool:
@@ -446,18 +496,13 @@ def main() -> None:
         out_dir = os.path.join(args.output_root, target_lang)
         os.makedirs(out_dir, exist_ok=True)
         out_path = os.path.join(out_dir, args.output_filename)
-        # Resume checkpoint stores last processed input line for this target.
+        # Resume checkpoint stores the committed input line and output offset.
         state_path = out_path + ".state.json"
 
         # Resume appends output and skips already-processed input lines.
         if args.resume and os.path.exists(out_path):
             mode = "a"
-            already_line = load_resume_state(state_path)
-            if already_line <= 0:
-                raise RuntimeError(
-                    f"Cannot safely resume {out_path}: missing or invalid state file "
-                    f"{state_path}. Move the partial output aside or rerun without --resume."
-                )
+            already_line = prepare_resume_output(out_path, state_path)
             print(
                 f"[info] Resume enabled for lang={target_lang}. "
                 f"Skipping input lines <= {already_line}."
@@ -465,6 +510,9 @@ def main() -> None:
         else:
             mode = "w"
             already_line = 0
+            # A new output must never inherit a checkpoint from an older run.
+            if os.path.exists(state_path):
+                os.remove(state_path)
 
         # Per-language counters and in-memory batch buffers.
         processed_input = 0
@@ -479,6 +527,27 @@ def main() -> None:
         last_input_line = already_line
         # Shared warning limiter for verbose truncation/cap warnings.
         warn_state = {"printed": 0}
+
+        def flush_pending_batch(out_f) -> None:
+            nonlocal batch_samples, jobs
+            nonlocal written_output, truncated_fields, output_cap_fields
+            if not batch_samples:
+                return
+            written_inc, trunc_inc, cap_inc = flush_batch(
+                out_f=out_f,
+                batch_samples=batch_samples,
+                jobs=jobs,
+                translator=translator,
+                target_lang=target_lang,
+                text_batch_size=args.text_batch_size,
+                warn_state=warn_state,
+                warn_limit_per_lang=args.warn_limit_per_lang,
+            )
+            written_output += written_inc
+            truncated_fields += trunc_inc
+            output_cap_fields += cap_inc
+            batch_samples = []
+            jobs = []
 
         pbar = None
         # Progress bar tracks input rows processed for this target language.
@@ -495,6 +564,11 @@ def main() -> None:
             for line_no, sample in iter_jsonl(args.input):
                 if line_no <= already_line:
                     continue
+                # The cap counts input records regardless of their routing. Check
+                # it before processing so an excluded boundary record cannot
+                # bypass the limit via the continue below.
+                if args.max_records > 0 and processed_input >= args.max_records:
+                    break
 
                 processed_input += 1
                 last_input_line = line_no
@@ -506,9 +580,11 @@ def main() -> None:
                 # Excluded samples are dropped unless keep_discarded is requested.
                 if not include_sample and not args.keep_discarded:
                     dropped_samples += 1
-                    # Persist resume state periodically even when dropping.
+                    # A checkpoint may advance past dropped rows only after any
+                    # earlier buffered translations have been written.
                     if args.resume and processed_input % args.state_every == 0:
-                        save_resume_state(state_path, last_input_line)
+                        flush_pending_batch(out_f)
+                        commit_resume_state(out_f, state_path, last_input_line)
                     continue
 
                 # Work on a copy; never mutate the input sample object directly.
@@ -543,22 +619,7 @@ def main() -> None:
 
                 # Flush when record batch reaches threshold.
                 if len(batch_samples) >= args.record_batch_size:
-                    written_inc, trunc_inc, cap_inc = flush_batch(
-                        out_f=out_f,
-                        batch_samples=batch_samples,
-                        jobs=jobs,
-                        translator=translator,
-                        target_lang=target_lang,
-                        text_batch_size=args.text_batch_size,
-                        warn_state=warn_state,
-                        warn_limit_per_lang=args.warn_limit_per_lang,
-                    )
-                    written_output += written_inc
-                    truncated_fields += trunc_inc
-                    output_cap_fields += cap_inc
-                    # Reset in-memory buffers for next batch.
-                    batch_samples = []
-                    jobs = []
+                    flush_pending_batch(out_f)
 
                 # Periodic language-level progress logging.
                 if processed_input % args.log_every == 0:
@@ -571,31 +632,15 @@ def main() -> None:
 
                 # Periodic resume checkpoint.
                 if args.resume and processed_input % args.state_every == 0:
-                    save_resume_state(state_path, last_input_line)
-
-                # Optional quick-run cap (applies per target language).
-                if args.max_records > 0 and processed_input >= args.max_records:
-                    break
+                    flush_pending_batch(out_f)
+                    commit_resume_state(out_f, state_path, last_input_line)
 
             # Flush tail batch (if any) after loop ends.
-            if batch_samples:
-                written_inc, trunc_inc, cap_inc = flush_batch(
-                    out_f=out_f,
-                    batch_samples=batch_samples,
-                    jobs=jobs,
-                    translator=translator,
-                    target_lang=target_lang,
-                    text_batch_size=args.text_batch_size,
-                    warn_state=warn_state,
-                    warn_limit_per_lang=args.warn_limit_per_lang,
-                )
-                written_output += written_inc
-                truncated_fields += trunc_inc
-                output_cap_fields += cap_inc
-
-        # Save final checkpoint so next resume starts after last processed line.
-        if args.resume:
-            save_resume_state(state_path, last_input_line)
+            flush_pending_batch(out_f)
+            # The final checkpoint is committed while the output handle is open,
+            # after every remaining row has been written and made durable.
+            if args.resume:
+                commit_resume_state(out_f, state_path, last_input_line)
         if pbar is not None:
             pbar.close()
 

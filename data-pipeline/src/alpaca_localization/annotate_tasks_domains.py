@@ -15,7 +15,7 @@ import requests
 TaskType = Literal[
     "question_answering",
     "reasoning",
-    "summarization",
+    "summarisation",
     "translation",
     "paraphrasing",
     "classification",
@@ -31,7 +31,7 @@ TaskType = Literal[
 ALL_TASK_TYPES: List[str] = [
     "question_answering",
     "reasoning",
-    "summarization",
+    "summarisation",
     "translation",
     "paraphrasing",
     "classification",
@@ -87,7 +87,7 @@ ALPACA_TEMPLATE = """Below is an instruction that describes a task, paired with 
 ### Response:
 """
 
-CLASSIFIER_INSTRUCTIONS = """You are labeling BOTH the TASK TYPE(S) and the DOMAIN(S) of the request.
+CLASSIFIER_INSTRUCTIONS = """You are labelling BOTH the TASK TYPE(S) and the DOMAIN(S) of the request.
 
 You must pick:
 - one PRIMARY task type (exactly one)
@@ -111,7 +111,7 @@ Rules (domains):
 - primary_domain must be exactly one of the allowed domain types.
 - secondary_domains must be a JSON array of allowed domain types.
 - secondary_domains must NOT repeat primary_domain.
-- Use "general" when the topic is everyday / non-specialized.
+- Use "general" when the topic is everyday or non-specialised.
 - Use "other" only if none fit.
 
 Return ONLY valid JSON with exactly these keys:
