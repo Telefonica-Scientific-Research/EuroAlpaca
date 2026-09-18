@@ -117,7 +117,7 @@ bash data-pipeline/scripts/00_prepare_source.sh
 The normalized source is written to the following path.
 
 ```text
-data/alpaca_multilingual/en/alpaca_cleaned.jsonl
+${ALPACA_ROOT}/en/alpaca_cleaned.jsonl
 ```
 
 Each record contains `sample_id`, `instruction`, `input` and `output`. The
@@ -136,7 +136,9 @@ export GEMMA_ENDPOINT=http://127.0.0.1:10001/chat/completions
 The server must accept `messages`, `temperature`, `max_tokens` and `stream`, and
 return the generated text in `choices[0].message.content`. You can override
 timeouts and token limits with the `GEMMA_*` variables shown in the individual
-stage scripts.
+stage scripts. In stage 1, invalid labels receive safe defaults. A response
+that cannot be parsed is retried up to eight times and then stops the stage
+without dropping the sample.
 
 ## Run the complete pipeline
 
@@ -166,6 +168,10 @@ them before stage 0 and keep them unchanged throughout a run. You may replace
 them with paths on another filesystem when more storage is needed. Avoid using
 the temporary smoke-test directory for a complete run.
 
+A full run creates 2,588,000 target-language records from 51,760 source
+samples. Stage 7 can require one Gemma call per target-language record, so test
+one language before starting all 50.
+
 ### Failure handling and quarantine
 
 Model responses that cannot be parsed are preserved for inspection.
@@ -184,11 +190,15 @@ Resume mode treats quarantined samples as already processed and does not retry
 them automatically. Review them manually or reprocess them with a compatible
 model while preserving the expected schema and `sample_id`. Quarantine files
 contain diagnostic records and must not be appended directly to a dataset.
+For a clean rerun, use a new empty `ALPACA_ROOT`. Keep each stage-4 or stage-5
+partial output together with its adjacent `.state.json` file.
 
 For a complete language dataset, the number of stage-4 translated samples plus
 the number of successful stage-5 localizations must equal the number of stage-3
-source samples. Also review the stage-8 matched-validation count to identify
-samples retained without successful stage-7 validation.
+source samples. The final file should also have unique `sample_id` values, the
+expected language tag and the five documented fields. Review the stage-8
+matched-validation count to identify samples retained without successful
+stage-7 validation.
 
 After stage 3, the following command produces a textual policy summary without
 invoking a model.
@@ -218,6 +228,10 @@ GPUS="0 1 2 3" \
 bash data-pipeline/scripts/04_translate_with_nllb_multi_gpu.sh
 ```
 
+Stage 4 still writes records reported as `input_truncated` or `output_hit_cap`.
+Review these warning counts and increase `MAX_INPUT_TOKENS` or
+`MAX_NEW_TOKENS` before rerunning when they are nonzero.
+
 `04_translate_with_nllb_def_batch.sh` is a specialized runner for the original
 field-policy batch subset. It is not part of the normal end-to-end command
 sequence.
@@ -243,8 +257,6 @@ bash data-pipeline/scripts/08_merge_validated_outputs.sh de
 ```
 
 This keeps the smoke-test artifacts separate from the default full-run data.
-Stages 4 and 5 use adjacent `.state.json` files for safe resume behavior. Do
-not remove a state file while retaining its partial output.
 
 ## Outputs
 
