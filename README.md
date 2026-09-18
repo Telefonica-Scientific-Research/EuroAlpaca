@@ -10,26 +10,19 @@ Literal translation can invalidate tasks involving spelling, grammar, rhyme,
 character counts, wordplay, idioms or other language-specific surface forms.
 EuroAlpaca therefore routes each source sample through one of two branches.
 
-```text
-Alpaca Cleaned source
-          |
-          v
-Task/domain and translation-policy annotation
-          |
-          +----------------------+----------------------+
-          | directly translatable| language-dependent   |
-          v                      v
-Policy-guided NLLB translation  Gemma task localization
-          |                      |
-          +----------+-----------+
-                     v
-            Per-language assembly
-                     |
-                     v
-       Gemma coherence validation/correction
-                     |
-                     v
-          Minimal final JSONL dataset
+```mermaid
+flowchart TD
+    A[Alpaca Cleaned source] --> B[Task and domain annotation]
+    B --> C[Translation-policy annotation]
+
+    C -->|Directly translatable| D[Policy-guided NLLB translation]
+    C -->|Language-dependent task| E[Gemma task localization]
+
+    D --> F[Per-language dataset assembly]
+    E --> F
+
+    F --> G[Gemma coherence validation and correction]
+    G --> H[Final EuroAlpaca JSONL dataset]
 ```
 
 The pipeline has eight executable stages.
