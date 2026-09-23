@@ -1,8 +1,12 @@
 # EuroAlpaca
 
+<img src="assets/euroalpaca_logo.png" alt="EuroAlpaca logo" width="180" align="right">
+
 EuroAlpaca is a task-preserving localization pipeline for creating instruction-following data in 50 European languages and language varieties from an English Alpaca-style source dataset. Instead of translating every field literally, the pipeline identifies language-dependent tasks, chooses between translation and target-language localization, and validates the resulting samples for coherence.
 
 The method is described in [*EuroAlpaca: Task-Preserving Localisation of Instruction Data for European Languages*](https://arxiv.org/pdf/2609.05043). The companion [European IFEval](https://github.com/Telefonica-Scientific-Research/european-ifeval) repository contains the separate multilingual instruction-following benchmark used for evaluation.
+
+<br clear="right">
 
 ## How the pipeline works
 
