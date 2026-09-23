@@ -1,6 +1,6 @@
 # EuroAlpaca
 
-<img src="assets/euroalpaca_logo.png" alt="EuroAlpaca logo" width="180" align="right">
+<img src="assets/euroalpaca_logo.png" alt="EuroAlpaca logo" width="200" align="right">
 
 EuroAlpaca is a task-preserving localization pipeline for creating instruction-following data in 50 European languages and language varieties from an English Alpaca-style source dataset. Instead of translating every field literally, the pipeline identifies language-dependent tasks, chooses between translation and target-language localization, and validates the resulting samples for coherence.
 
