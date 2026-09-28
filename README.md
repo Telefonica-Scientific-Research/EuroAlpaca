@@ -368,3 +368,8 @@ reproducible construction pipeline.
 This repository contains the dataset-construction pipeline. It does not include
 the generated EuroAlpaca datasets, model weights, a Gemma serving stack,
 fine-tuning code or benchmark evaluation code.
+
+## License
+
+The EuroAlpaca source code is licensed under the [Apache License 2.0](LICENSE).
+External datasets, models and dependencies retain their own license terms.
