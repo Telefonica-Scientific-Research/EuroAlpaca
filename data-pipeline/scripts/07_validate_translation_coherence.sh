@@ -21,7 +21,7 @@ RESUME="${RESUME:-true}"
 MAX_RECORDS="${MAX_RECORDS:-0}"
 LOG_EVERY="${LOG_EVERY:-100}"
 ERROR_RAW_CHARS="${ERROR_RAW_CHARS:-5000}"
-QUARANTINE_FILENAME="${QUARANTINE_FILENAME:-alpaca_post_validated_gemma4_quarantine.jsonl}"
+QUARANTINE_FILENAME="${QUARANTINE_FILENAME:-alpaca_cleaned_labeled_annotated_post_validated_gemma4_quarantine.jsonl}"
 
 LANGS=("${EUROALPACA_LANGS[@]}")
 LANGS_CSV="${LANGS_CSV:-}"

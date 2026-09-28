@@ -190,7 +190,7 @@ preserved for inspection.
   and `output` must be non-empty, while `input` may be empty. Failed samples are
   absent from stage 6 until they are successfully localized.
 - Stage 7 writes failed validation responses to
-  `${ALPACA_ROOT}/{lang}/quarantine/alpaca_post_validated_gemma4_quarantine.jsonl`.
+  `${ALPACA_ROOT}/{lang}/quarantine/alpaca_cleaned_labeled_annotated_post_validated_gemma4_quarantine.jsonl`.
   This happens only after its repair attempts fail. Stage 8 retains the
   corresponding stage-6 sample without a correction.
 
