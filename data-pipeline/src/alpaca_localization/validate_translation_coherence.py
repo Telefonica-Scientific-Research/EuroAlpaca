@@ -518,7 +518,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--quarantine-filename",
-        default="alpaca_post_correction_quarantine.jsonl",
+        default="alpaca_post_correction_gemma4_quarantine.jsonl",
         help="Quarantine filename inside <output-dir>/quarantine/.",
     )
     parser.add_argument("--disable-tqdm", action="store_true", help="Disable tqdm progress bars.")

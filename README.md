@@ -190,7 +190,7 @@ preserved for inspection.
   and `output` must be non-empty, while `input` may be empty. Failed samples are
   absent from stage 6 until they are successfully localized.
 - Stage 7 writes failed validation responses to
-  `${ALPACA_ROOT}/{lang}/quarantine/alpaca_post_correction_quarantine.jsonl`.
+  `${ALPACA_ROOT}/{lang}/quarantine/alpaca_post_correction_gemma4_quarantine.jsonl`.
   This happens only after its repair attempts fail. Stage 8 retains the
   corresponding stage-6 sample without a correction.
 
@@ -200,6 +200,13 @@ model while preserving the expected schema and `sample_id`. Quarantine files
 contain diagnostic records and must not be appended directly to a dataset.
 For a clean rerun, use a new empty `ALPACA_ROOT`. Keep each stage-4 or stage-5
 partial output together with its adjacent `.state.json` file.
+
+To recover stage-5 failures, use each quarantine record's `source_sample` to
+produce a corrected target-language record in a separate file. Verify its
+`sample_id`, string `instruction`, `input` and `output`, and language tag. Merge
+the verified records into
+`${ALPACA_ROOT}/{lang}/alpaca_discarded_samples_localized_gemma4.jsonl`, keep
+the quarantine file as an audit record, and rerun stage 6.
 
 Stage 6 verifies that the stage-4 and stage-5 outputs form an exact,
 non-overlapping partition of the stage-3 `sample_id` values. It stops before
