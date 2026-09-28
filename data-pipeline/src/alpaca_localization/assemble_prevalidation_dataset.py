@@ -91,19 +91,18 @@ def main() -> None:
             "Resolve stage-4/stage-5 failures or quarantined samples before assembly."
         )
 
+    # The stage-3 source defines the canonical dataset order. Iterating it also
+    # avoids lexicographical ID sorting such as 1, 10, 100, 2.
     merged_rows: List[Dict] = []
-    for sid, obj in translated_by_id.items():
+    for sid in expected_by_id:
+        if sid in translated_by_id:
+            obj = translated_by_id[sid]
+        else:
+            obj = localized_by_id[sid]
         row = dict(obj)
         row["sample_id"] = sid
         row["language"] = args.language
         merged_rows.append(row)
-    for sid, obj in localized_by_id.items():
-        row = dict(obj)
-        row["sample_id"] = sid
-        row["language"] = args.language
-        merged_rows.append(row)
-
-    merged_rows.sort(key=lambda r: str(r.get("sample_id", "")))
 
     out_parent = os.path.dirname(os.path.abspath(args.output))
     if out_parent:

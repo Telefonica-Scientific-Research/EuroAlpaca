@@ -530,6 +530,55 @@ class RoutingAndMergeTest(unittest.TestCase):
             self.assertEqual("two", final_rows[1]["instruction"])
             self.assertTrue(all(row["language"] == "de" for row in final_rows))
 
+    def test_assembly_preserves_expected_source_order(self):
+        environment = dict(os.environ)
+        environment["PYTHONPATH"] = str(SOURCE_ROOT)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            expected = root / "expected.jsonl"
+            translated = root / "translated.jsonl"
+            localized = root / "localized.jsonl"
+            output = root / "assembled.jsonl"
+            expected.write_text(
+                "".join(
+                    json.dumps({"sample_id": sample_id}) + "\n"
+                    for sample_id in (2, 10, 1)
+                ),
+                encoding="utf-8",
+            )
+            translated.write_text(
+                "{\"sample_id\": 1}\n{\"sample_id\": 10}\n", encoding="utf-8"
+            )
+            localized.write_text("{\"sample_id\": 2}\n", encoding="utf-8")
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "alpaca_localization.assemble_prevalidation_dataset",
+                    "--translated",
+                    str(translated),
+                    "--localized-discarded",
+                    str(localized),
+                    "--expected-source",
+                    str(expected),
+                    "--output",
+                    str(output),
+                    "--language",
+                    "de",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                env=environment,
+            )
+
+            output_ids = [
+                json.loads(line)["sample_id"]
+                for line in output.read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual([2, 10, 1], output_ids)
+
     def test_assembly_rejects_missing_expected_sample(self):
         environment = dict(os.environ)
         environment["PYTHONPATH"] = str(SOURCE_ROOT)
