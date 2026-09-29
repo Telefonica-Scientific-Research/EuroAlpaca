@@ -372,4 +372,12 @@ fine-tuning code or benchmark evaluation code.
 ## License
 
 The EuroAlpaca source code is licensed under the [Apache License 2.0](LICENSE).
-External datasets, models and dependencies retain their own license terms.
+
+Alpaca Cleaned is distributed under the [CC BY-NC 4.0
+license](https://github.com/gururise/AlpacaDataCleaned/blob/main/DATA_LICENSE).
+It is downloaded separately and is not included in this repository. The Apache
+2.0 license applies only to the EuroAlpaca source code. Alpaca Cleaned and
+datasets derived from it remain subject to the upstream dataset terms.
+
+Other external datasets, models and dependencies retain their own license
+terms.
