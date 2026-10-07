@@ -4,7 +4,7 @@
 
 EuroAlpaca is a task-preserving localization pipeline for creating instruction-following data in 50 European languages and language varieties from an English Alpaca-style source dataset. Instead of translating every field literally, the pipeline identifies language-dependent tasks, chooses between translation and target-language localization, and validates the resulting samples for coherence.
 
-The method is described in [*EuroAlpaca: Task-Preserving Localisation of Instruction Data for European Languages*](https://arxiv.org/pdf/2609.05043). The companion [European IFEval](https://github.com/Telefonica-Scientific-Research/european-ifeval) repository contains the separate multilingual instruction-following benchmark used for evaluation.
+The method is described in [*EuroAlpaca: Task-Preserving Localisation of Instruction Data for European Languages*](https://arxiv.org/abs/2609.05043), accepted at the INLG 2026 conference. The companion [European IFEval](https://github.com/Telefonica-Scientific-Research/european-ifeval) repository contains the separate multilingual instruction-following benchmark used for evaluation.
 
 <br clear="right">
 
@@ -59,10 +59,14 @@ from Git.
 
 - Python 3.10.
 - A CUDA-capable environment suitable for NLLB-200 3.3B translation.
-- Access to the `facebook/nllb-200-3.3B` model through Hugging Face.
+- Access to the [`facebook/nllb-200-3.3B`](https://huggingface.co/facebook/nllb-200-3.3B)
+  model through Hugging Face. It is licensed under CC BY-NC 4.0 and intended
+  for research rather than production deployment.
 - An OpenAI-compatible `/chat/completions` endpoint serving
-  `google/gemma-4-31B-it` as its fixed model for annotation, localization and
-  validation. Starting and hosting that endpoint is outside this repository.
+  [`google/gemma-4-31B-it`](https://huggingface.co/google/gemma-4-31B-it),
+  released under Apache 2.0, as its fixed model for annotation, localization
+  and validation. Starting and hosting that endpoint is outside this
+  repository.
 
 The following commands install the pipeline from a clean clone.
 
@@ -353,12 +357,11 @@ tables may abbreviate these as `no`, `nn` and `oc`.
 
 ## EuroAlpaca dataset
 
-The generated EuroAlpaca data will be published in the planned
-[EuroAlpaca Hugging Face dataset repository](https://huggingface.co/datasets/Telefonica-Scientific-Research/EuroAlpaca).
-This URL is a placeholder until the dataset repository is created.
+The generated EuroAlpaca data are published in the
+[EuroAlpaca](https://huggingface.co/datasets/Telefonica/EuroAlpaca) Hugging Face dataset repository.
 
-The planned release will provide a separate subset for every target language.
-Each subset will use the language codes listed above and contain the final
+The dataset provides a separate subset for every target language. Each subset
+uses the language codes listed above and contains the final
 `sample_id`, `instruction`, `input`, `output` and `language` fields. Keeping the
 data on Hugging Face allows this GitHub repository to remain focused on the
 reproducible construction pipeline.
