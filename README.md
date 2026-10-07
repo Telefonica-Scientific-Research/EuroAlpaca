@@ -357,20 +357,7 @@ tables may abbreviate these as `no`, `nn` and `oc`.
 
 ## EuroAlpaca dataset
 
-The generated EuroAlpaca data are published in the
-[EuroAlpaca](https://huggingface.co/datasets/Telefonica/EuroAlpaca) Hugging Face dataset repository.
-
-The dataset provides a separate subset for every target language. Each subset
-uses the language codes listed above and contains the final
-`sample_id`, `instruction`, `input`, `output` and `language` fields. Keeping the
-data on Hugging Face allows this GitHub repository to remain focused on the
-reproducible construction pipeline.
-
-## Current scope
-
-This repository contains the dataset-construction pipeline. It does not include
-the generated EuroAlpaca datasets, model weights, a Gemma serving stack,
-fine-tuning code or benchmark evaluation code.
+The generated EuroAlpaca data are published in the [EuroAlpaca](https://huggingface.co/datasets/Telefonica/EuroAlpaca) Hugging Face dataset repository. The dataset provides a separate subset for every target language. Each subset uses the language codes listed above and contains the final `sample_id`, `instruction`, `input`, `output` and `language` fields.
 
 ## License
 
