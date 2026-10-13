@@ -19,7 +19,7 @@ flowchart TD
     A[Alpaca Cleaned source] --> B[Task and domain annotation]
     B --> C[Translation-policy annotation]
 
-    C -->|Directly translatable| D[Policy-guided NLLB translation]
+    C -->|MT-suitable| D[Policy-guided NLLB translation]
     C -->|Language-dependent task| E[Gemma task localization]
 
     D --> F[Per-language dataset assembly]
@@ -31,14 +31,17 @@ flowchart TD
 
 The pipeline has eight executable stages.
 
-1. Normalize the English source and assign stable sample identifiers.
+1. Normalize the English source data and assign stable sample identifiers.
 2. Annotate each sample with task and domain labels.
-3. Determine sample-level routing and field-level translation policies.
+3. Choose a translation or localization route for each sample and define
+   field-level translation policies.
 4. Translate eligible fields with `facebook/nllb-200-3.3B`.
-5. Recreate policy-excluded tasks directly in each target language.
-6. Assemble the translated and task-localized branches.
+5. Localize tasks unsuitable for machine translation directly in each target
+   language.
+6. Assemble the translated and task-localized branches into a per-language
+   dataset.
 7. Validate coherence and produce targeted corrections.
-8. Merge corrections into the final minimal records.
+8. Merge validated corrections into the final minimal records.
 
 The histogram and task/domain split scripts are optional analysis utilities and
 do not change the core pipeline.
