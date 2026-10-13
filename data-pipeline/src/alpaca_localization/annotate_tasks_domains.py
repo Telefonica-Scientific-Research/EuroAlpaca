@@ -9,6 +9,8 @@ from typing import List, Literal, Optional, Tuple, Dict, Any
 
 import requests
 
+from alpaca_localization.resume import validate_resume_prefix
+
 # -----------------------------
 # 1) Taxonomies
 # -----------------------------
@@ -296,15 +298,6 @@ def iter_jsonl(path: str):
             except json.JSONDecodeError as e:
                 raise RuntimeError(f"Invalid JSON on line {line_no}: {e}") from e
 
-# Count non-empty lines in a file (for resume functionality)
-def count_lines(path: str) -> int:
-    n = 0
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            if line.strip():
-                n += 1
-    return n
-
 # -----------------------------
 # 7) Main
 # -----------------------------
@@ -325,7 +318,7 @@ def main():
 
     already_done = 0
     if args.resume and os.path.exists(args.output):
-        already_done = count_lines(args.output)
+        already_done = validate_resume_prefix(args.input, args.output)
         print(f"[info] Resuming: output already has {already_done} lines; will skip those inputs.")
 
     with open(args.output, "a" if args.resume else "w", encoding="utf-8") as out_f:

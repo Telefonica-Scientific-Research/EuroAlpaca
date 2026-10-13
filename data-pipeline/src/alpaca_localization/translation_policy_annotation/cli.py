@@ -12,6 +12,7 @@ except Exception:
 from .constants import DEFAULT_TARGET_LANGS, LANG_NAME_BY_TAG
 from .decisions import annotate_sample
 from .io_utils import count_nonempty_lines, iter_jsonl
+from ..resume import validate_resume_prefix
 
 def build_arg_parser() -> argparse.ArgumentParser:
     """Build the command-line argument parser."""
@@ -107,9 +108,9 @@ def main() -> None:
         os.makedirs(out_parent, exist_ok=True)
 
     # Resume mode: append to existing output and skip already-written input rows.
-    # This assumes output order matches input order for previous successful writes.
+    # Validate that previous output is compatible with the current input.
     if args.resume and os.path.exists(args.output):
-        already_done = count_nonempty_lines(args.output)
+        already_done = validate_resume_prefix(args.input, args.output)
         mode = "a"
         print(f"[info] Resume enabled. Skipping first {already_done} records from input.")
     else:
