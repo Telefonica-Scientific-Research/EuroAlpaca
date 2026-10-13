@@ -202,12 +202,10 @@ preserved for inspection.
   rerun stages 7 and 8 for that language.
 
 Resume mode treats quarantined samples as already processed and does not retry
-them automatically. Review them manually or reprocess them with a compatible
-model while preserving the expected schema and `sample_id`. Quarantine files
-contain diagnostic records and must not be appended directly to a dataset.
-For a clean rerun, use a new empty `ALPACA_ROOT`. When resuming a partial
-stage-4 or stage-5 run, keep its JSONL output and adjacent `.state.json`
-checkpoint file together.
+them automatically. Quarantine files contain diagnostic records and must not be
+appended directly to a dataset. For a clean rerun, use a new empty
+`ALPACA_ROOT`. When resuming a partial stage-4 or stage-5 run, keep its JSONL
+output and adjacent `.state.json` checkpoint file together.
 
 If stage 5 quarantines one or more samples, stage 6 stops because the
 translated and localized branches no longer cover every source sample. To
@@ -218,10 +216,6 @@ language tag, then merge the verified records into
 `${ALPACA_ROOT}/{lang}/alpaca_discarded_samples_localized_gemma4.jsonl`. Keep
 the quarantine file as an audit record. Rerun stage 6 to rebuild the complete
 prevalidation dataset.
-
-The final file should have the expected language tag and the five documented
-fields. Review the stage-8 matched-validation count to identify samples retained
-without successful stage-7 validation.
 
 After stage 3, the following command produces a textual policy summary without
 invoking a model.
