@@ -301,8 +301,6 @@ The final file contains one JSON object per line with the following schema.
 ```
 
 Use `ALPACA_ROOT=/path/to/workdir` to place all generated artifacts elsewhere.
-Stage-specific `INPUT`, `OUTPUT`, `INPUT_JSONL`, `OUTPUT_JSONL` and
-`OUTPUT_ROOT` variables can override individual paths.
 
 ## Languages
 
