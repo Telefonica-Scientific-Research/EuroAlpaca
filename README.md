@@ -203,8 +203,8 @@ Resume mode treats quarantined samples as already processed and does not retry
 them automatically. Review them manually or reprocess them with a compatible
 model while preserving the expected schema and `sample_id`. Quarantine files
 contain diagnostic records and must not be appended directly to a dataset.
-For a clean rerun, use a new empty `ALPACA_ROOT`. When moving or resuming a
-partial stage-4 or stage-5 run, keep its JSONL output and adjacent `.state.json`
+For a clean rerun, use a new empty `ALPACA_ROOT`. When resuming a partial
+stage-4 or stage-5 run, keep its JSONL output and adjacent `.state.json`
 checkpoint file together.
 
 To recover stage-5 failures, use each quarantine record's `source_sample` to
