@@ -195,9 +195,11 @@ preserved for inspection.
   absent from stage 6 until they are successfully localized.
 - Stage 7 writes failed validation responses to
   `${ALPACA_ROOT}/{lang}/quarantine/alpaca_cleaned_labeled_annotated_post_validated_gemma4_quarantine.jsonl`.
-  This happens only after its repair attempts fail. Stage 8 keeps the unchanged
-  stage-6 version in the final dataset. The quarantine record preserves the
-  failure for review.
+  If stage 7 cannot produce a valid response after its repair attempts, stage 8
+  keeps the original stage-6 sample unchanged in the final dataset. The stage-7
+  quarantine file records the affected sample and failure details for review.
+  To apply a manual correction, update the corresponding stage-6 sample and
+  rerun stages 7 and 8 for that language.
 
 Resume mode treats quarantined samples as already processed and does not retry
 them automatically. Review them manually or reprocess them with a compatible
@@ -207,20 +209,19 @@ For a clean rerun, use a new empty `ALPACA_ROOT`. When resuming a partial
 stage-4 or stage-5 run, keep its JSONL output and adjacent `.state.json`
 checkpoint file together.
 
-To recover stage-5 failures, use each quarantine record's `source_sample` to
-produce a corrected target-language record in a separate file. Verify its
-`sample_id`, string `instruction`, `input` and `output`, and language tag. Merge
-the verified records into
-`${ALPACA_ROOT}/{lang}/alpaca_discarded_samples_localized_gemma4.jsonl`, keep
-the quarantine file as an audit record, and rerun stage 6.
+If stage 5 quarantines one or more samples, stage 6 stops because the
+translated and localized branches no longer cover every source sample. To
+recover the missing localized records, use each quarantine record's
+`source_sample` to produce a corrected target-language record in a separate
+file. Verify its `sample_id`, string `instruction`, `input` and `output`, and
+language tag, then merge the verified records into
+`${ALPACA_ROOT}/{lang}/alpaca_discarded_samples_localized_gemma4.jsonl`. Keep
+the quarantine file as an audit record. Rerun stage 6 to rebuild the complete
+prevalidation dataset.
 
-Stage 6 verifies that the stage-4 and stage-5 outputs form an exact,
-non-overlapping partition of the stage-3 `sample_id` values. It stops before
-assembly if a sample is missing, duplicated or unexpected. Resolve any stage-5
-quarantine before continuing. The final file should have the expected language
-tag and the five documented fields. Review the stage-8 matched-validation count
-to identify samples retained without successful stage-7 validation.
-Stage 8 rejects duplicate validation IDs and IDs absent from the stage-6 input.
+The final file should have the expected language tag and the five documented
+fields. Review the stage-8 matched-validation count to identify samples retained
+without successful stage-7 validation.
 
 After stage 3, the following command produces a textual policy summary without
 invoking a model.
