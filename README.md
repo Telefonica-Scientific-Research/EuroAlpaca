@@ -358,6 +358,3 @@ license](https://github.com/gururise/AlpacaDataCleaned/blob/main/DATA_LICENSE).
 It is downloaded separately and is not included in this repository. The Apache
 2.0 license applies only to the EuroAlpaca source code. Alpaca Cleaned and
 datasets derived from it remain subject to the upstream dataset terms.
-
-Other external datasets, models and dependencies retain their own license
-terms.
