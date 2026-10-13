@@ -169,10 +169,12 @@ bash data-pipeline/scripts/07_validate_translation_coherence.sh
 bash data-pipeline/scripts/08_merge_validated_outputs.sh
 ```
 
-These values make the default persistent data and log locations explicit. Set
-them before stage 0 and keep them unchanged throughout a run. You may replace
-them with paths on another filesystem when more storage is needed. Avoid using
-the temporary smoke-test directory for a complete run.
+These variables control where the pipeline writes generated data and logs. If
+the repository filesystem lacks sufficient space, point `ALPACA_ROOT` and
+`LOG_ROOT` to directories on a larger persistent filesystem. The downloaded
+Alpaca Cleaned source remains at `data/source/alpaca_data_cleaned.json`. Set
+these variables before stage 0 and keep them unchanged throughout a run. Avoid
+using the temporary smoke-test directory for a complete run.
 
 A full run creates 2,588,000 target-language records from 51,760 source
 samples. Stage 7 can require one Gemma call per target-language record, so test
