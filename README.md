@@ -245,18 +245,15 @@ GPUS="0 1 2 3" \
 bash data-pipeline/scripts/04_translate_with_nllb_multi_gpu.sh
 ```
 
-Stage 4 reports input-truncation and output-length-cap warnings. If either count
-is nonzero, increase `MAX_INPUT_TOKENS` or `MAX_NEW_TOKENS` and rerun before
-using the output.
+If stage 4 reports any input-truncation or output-length-cap warnings, increase
+`MAX_INPUT_TOKENS` or `MAX_NEW_TOKENS` and rerun before using the output.
 
 ## Small German integration run
 
-This exercises the live model stages on ten samples. It requires both the Gemma
-endpoint and enough GPU memory to load NLLB-200 3.3B.
-
-In stage 4, `MAX_RECORDS` counts source rows, including rows routed to stage 5.
-Limit stage 0 as shown below when testing a subset. Otherwise, stage 6 will
-correctly reject the incomplete branches.
+This small integration run executes the NLLB translation and Gemma stages on
+ten samples. It requires a running Gemma endpoint and enough GPU memory to load
+NLLB-200 3.3B. The `LIMIT=10` setting in stage 0 ensures that all later stages
+process the same ten-sample subset.
 
 ```bash
 export ALPACA_ROOT=/tmp/euroalpaca-smoke/data
@@ -266,10 +263,10 @@ LIMIT=10 bash data-pipeline/scripts/00_prepare_source.sh
 bash data-pipeline/scripts/01_annotate_tasks_domains.sh
 bash data-pipeline/scripts/03_annotate_translation_policies.sh
 
-MAX_RECORDS=10 bash data-pipeline/scripts/04_translate_with_nllb.sh de
-MAX_RECORDS=10 bash data-pipeline/scripts/05_localize_discarded_samples.sh de
+bash data-pipeline/scripts/04_translate_with_nllb.sh de
+bash data-pipeline/scripts/05_localize_discarded_samples.sh de
 bash data-pipeline/scripts/06_assemble_prevalidation_dataset.sh de
-MAX_RECORDS=10 bash data-pipeline/scripts/07_validate_translation_coherence.sh de
+bash data-pipeline/scripts/07_validate_translation_coherence.sh de
 bash data-pipeline/scripts/08_merge_validated_outputs.sh de
 ```
 
