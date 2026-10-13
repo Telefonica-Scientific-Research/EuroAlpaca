@@ -245,13 +245,9 @@ GPUS="0 1 2 3" \
 bash data-pipeline/scripts/04_translate_with_nllb_multi_gpu.sh
 ```
 
-Stage 4 still writes records reported as `input_truncated` or `output_hit_cap`.
-Review these warning counts and increase `MAX_INPUT_TOKENS` or
-`MAX_NEW_TOKENS` before rerunning when they are nonzero.
-
-`04_translate_with_nllb_def_batch.sh` is a specialized runner for the original
-field-policy batch subset. It is not part of the normal end-to-end command
-sequence.
+Stage 4 reports input-truncation and output-length-cap warnings. If either count
+is nonzero, increase `MAX_INPUT_TOKENS` or `MAX_NEW_TOKENS` and rerun before
+using the output.
 
 ## Small German integration run
 
