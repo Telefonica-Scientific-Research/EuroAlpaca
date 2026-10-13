@@ -55,9 +55,6 @@ do not change the core pipeline.
 - `data/` — ignored working area for source, intermediate and final datasets.
 - `docs/method.md` — concise method notes.
 
-Generated data, model weights, logs and checkpoints are intentionally excluded
-from Git.
-
 ## Requirements
 
 - Python 3.10.
