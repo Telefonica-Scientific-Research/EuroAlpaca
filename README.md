@@ -128,9 +128,7 @@ The normalized source is written to the following path.
 ${ALPACA_ROOT}/en/alpaca_cleaned.jsonl
 ```
 
-Each record contains `sample_id`, `instruction`, `input` and `output`. The
-normalizer also accepts JSONL input through the `SOURCE_DATA` environment
-variable.
+Each record contains `sample_id`, `instruction`, `input` and `output`.
 
 ## Configure Gemma
 
